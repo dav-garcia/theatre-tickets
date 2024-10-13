@@ -38,9 +38,9 @@ public class Customer implements AggregateRoot<String> {
     }
 
     @NonNull
-    public List<Discount> getAppliedDiscounts(final UUID booking) {
+    public List<Discount> getAppliedDiscounts(final UUID ticket) {
         return discounts.stream()
-                .filter(d -> Objects.equals(d.getAppliedToBooking(), booking))
+                .filter(d -> Objects.equals(d.getAppliedToTicket(), ticket))
                 .collect(Collectors.toList());
     }
 }

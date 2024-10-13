@@ -15,5 +15,5 @@ public class Discount implements Entity<UUID> {
     private final int amount;
     private final LocalDate validFrom;
     private final LocalDate validUntil;
-    UUID appliedToBooking;
+    UUID appliedToTicket;
 }

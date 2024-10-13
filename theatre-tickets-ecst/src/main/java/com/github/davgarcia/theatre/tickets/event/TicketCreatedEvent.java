@@ -1,6 +1,6 @@
-package com.github.davgarcia.theatre.tickets.event.booking;
+package com.github.davgarcia.theatre.tickets.event;
 
-import com.github.davgarcia.theatre.tickets.event.performance.Seat;
+import com.github.davgarcia.theatre.tickets.Seat;
 import com.github.davgarcia.theatre.tickets.infra.Event;
 import lombok.Value;
 
@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Value
-public class BookingCreatedEvent implements Event<UUID> {
+public class TicketCreatedEvent implements Event<UUID> {
 
     UUID aggregateRootId;
     UUID performance;

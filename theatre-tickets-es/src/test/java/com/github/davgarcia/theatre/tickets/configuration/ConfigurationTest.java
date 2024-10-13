@@ -3,7 +3,7 @@ package com.github.davgarcia.theatre.tickets.configuration;
 import com.github.davgarcia.theatre.tickets.command.customer.CustomerCommandContext;
 import com.github.davgarcia.theatre.tickets.command.payment.PaymentCommandContext;
 import com.github.davgarcia.theatre.tickets.command.performance.PerformanceCommandContext;
-import com.github.davgarcia.theatre.tickets.command.booking.BookingCommandContext;
+import com.github.davgarcia.theatre.tickets.command.ticket.TicketCommandContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -20,15 +20,15 @@ class ConfigurationTest {
     void givenFullConfigurationThenDependenciesInjected() {
         contextRunner.withUserConfiguration(
                 PerformanceConfiguration.class,
-                BookingConfiguration.class,
+                TicketConfiguration.class,
                 CustomerConfiguration.class,
                 PaymentConfiguration.class,
                 SagaConfiguration.class,
                 CustomerHistoryConfiguration.class).run(context -> {
             assertPerformancePublisher(context);
             assertPerformanceDispatcher(context);
-            assertBookingPublisher(context);
-            assertBookingDispatcher(context);
+            assertTicketPublisher(context);
+            assertTicketDispatcher(context);
             assertCustomerPublisher(context);
             assertCustomerDispatcher(context);
             assertPaymentPublisher(context);
@@ -49,17 +49,17 @@ class ConfigurationTest {
                 .extracting("context").isOfAnyClassIn(PerformanceCommandContext.class);
     }
 
-    private void assertBookingPublisher(final AssertableApplicationContext context) {
-        assertThat(context).getBean("bookingPublisher")
+    private void assertTicketPublisher(final AssertableApplicationContext context) {
+        assertThat(context).getBean("ticketPublisher")
                 .hasFieldOrPropertyWithValue("eventConsumers", Set.of(
-                        context.getBean("bookingEventConsumer"),
-                        context.getBean("bookingSaga"),
+                        context.getBean("ticketEventConsumer"),
+                        context.getBean("ticketSaga"),
                         context.getBean("customerHistoryEventConsumer")));
     }
 
-    private void assertBookingDispatcher(final AssertableApplicationContext context) {
-        assertThat(context).getBean("bookingDispatcher")
-                .extracting("context").isOfAnyClassIn(BookingCommandContext.class);
+    private void assertTicketDispatcher(final AssertableApplicationContext context) {
+        assertThat(context).getBean("ticketDispatcher")
+                .extracting("context").isOfAnyClassIn(TicketCommandContext.class);
     }
 
     private void assertCustomerPublisher(final AssertableApplicationContext context) {

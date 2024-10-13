@@ -2,10 +2,10 @@ package com.github.davgarcia.theatre.tickets.command;
 
 import com.github.davgarcia.theatre.tickets.Seat;
 import com.github.davgarcia.theatre.tickets.Performance;
-import com.github.davgarcia.theatre.tickets.Booking;
+import com.github.davgarcia.theatre.tickets.Ticket;
 import com.github.davgarcia.theatre.tickets.Auditorium;
 import com.github.davgarcia.theatre.tickets.configuration.EcstConfiguration;
-import com.github.davgarcia.theatre.tickets.event.BookingCreatedEvent;
+import com.github.davgarcia.theatre.tickets.event.TicketCreatedEvent;
 import com.github.davgarcia.theatre.tickets.infra.event.EventConsumer;
 import com.github.davgarcia.theatre.tickets.infra.event.inmemory.InMemoryEventPublisher;
 import com.github.davgarcia.theatre.tickets.infra.repository.Repository;
@@ -47,19 +47,19 @@ class PerformanceCommandServiceTest {
     private Repository<Performance, UUID> performanceRepository;
 
     @Autowired
-    private Repository<Booking, UUID> bookingRepository;
+    private Repository<Ticket, UUID> ticketRepository;
 
     @Autowired
-    private InMemoryEventPublisher<UUID> bookingPublisher;
+    private InMemoryEventPublisher<UUID> ticketPublisher;
 
     @Autowired
     private PerformanceCommandService sut;
 
     @MockBean
-    private EventConsumer<UUID> bookingEventConsumer;
+    private EventConsumer<UUID> ticketEventConsumer;
 
     @Test
-    void givenPerformance_whenSelectSeats_thenBookingCreated() {
+    void givenPerformance_whenSelectSeats_thenTicketCreated() {
         final var performanceId = UUID.randomUUID();
         final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
@@ -70,25 +70,25 @@ class PerformanceCommandServiceTest {
                 .where(AUDITORIUM)
                 .availableSeats(new HashSet<>(AUDITORIUM.getSeats()))
                 .build());
-        bookingPublisher.registerEventConsumer(bookingEventConsumer);
+        ticketPublisher.registerEventConsumer(ticketEventConsumer);
 
-        final var bookingId = sut.selectSeats(performanceId, Set.of(A1, A2, B3), customerId);
+        final var ticketId = sut.selectSeats(performanceId, Set.of(A1, A2, B3), customerId);
 
-        final var eventCaptor = ArgumentCaptor.forClass(BookingCreatedEvent.class);
-        verify(bookingEventConsumer).consume(eq(1L), eventCaptor.capture());
+        final var eventCaptor = ArgumentCaptor.forClass(TicketCreatedEvent.class);
+        verify(ticketEventConsumer).consume(eq(1L), eventCaptor.capture());
         await().atMost(2, TimeUnit.SECONDS).until(() -> eventCaptor.getValue() != null);
 
         final var performance = performanceRepository.load(performanceId).orElseThrow();
         assertThat(performance.getVersion()).isEqualTo(2L);
         assertThat(performance.getAvailableSeats()).containsExactlyInAnyOrder(A3, B1, B2);
-        assertThat(bookingRepository.load(bookingId).orElseThrow()).isEqualTo(Booking.builder()
-                .id(bookingId)
+        assertThat(ticketRepository.load(ticketId).orElseThrow()).isEqualTo(Ticket.builder()
+                .id(ticketId)
                 .version(1L)
                 .performance(performanceId)
                 .seats(Set.of(A1, A2, B3))
                 .customer(customerId)
                 .build());
         assertThat(eventCaptor.getValue()).isEqualTo(
-                new BookingCreatedEvent(bookingId, performanceId, Set.of(A1, A2, B3), customerId));
+                new TicketCreatedEvent(ticketId, performanceId, Set.of(A1, A2, B3), customerId));
     }
 }

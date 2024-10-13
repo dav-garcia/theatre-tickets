@@ -7,8 +7,8 @@ import com.github.davgarcia.theatre.tickets.command.payment.Payment;
 import com.github.davgarcia.theatre.tickets.command.payment.PaymentCommandContext;
 import com.github.davgarcia.theatre.tickets.command.performance.Performance;
 import com.github.davgarcia.theatre.tickets.command.performance.PerformanceCommandContext;
-import com.github.davgarcia.theatre.tickets.command.booking.Booking;
-import com.github.davgarcia.theatre.tickets.command.booking.BookingCommandContext;
+import com.github.davgarcia.theatre.tickets.command.ticket.Ticket;
+import com.github.davgarcia.theatre.tickets.command.ticket.TicketCommandContext;
 import com.github.davgarcia.theatre.tickets.infra.dispatch.CommandDispatcher;
 import com.github.davgarcia.theatre.tickets.infra.event.inmemory.InMemoryEventPublisher;
 import com.github.davgarcia.theatre.tickets.infra.repository.Repository;
@@ -18,7 +18,7 @@ import com.github.davgarcia.theatre.tickets.saga.CustomerSaga;
 import com.github.davgarcia.theatre.tickets.saga.ProcessState;
 import com.github.davgarcia.theatre.tickets.saga.PaymentSaga;
 import com.github.davgarcia.theatre.tickets.saga.PerformanceSaga;
-import com.github.davgarcia.theatre.tickets.saga.BookingSaga;
+import com.github.davgarcia.theatre.tickets.saga.TicketSaga;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -45,26 +45,26 @@ public class SagaConfiguration {
     @Bean
     public PerformanceSaga performanceSaga(
             final Repository<ProcessState, UUID> repository,
-            final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher,
+            final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher,
             final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher,
             final InMemoryEventPublisher<UUID> performancePublisher) {
-        final var result = new PerformanceSaga(repository, bookingDispatcher, customerDispatcher);
+        final var result = new PerformanceSaga(repository, ticketDispatcher, customerDispatcher);
         performancePublisher.registerEventConsumer(result);
         return result;
     }
 
     @Bean
-    public BookingSaga bookingSaga(
+    public TicketSaga ticketSaga(
             final Repository<ProcessState, UUID> repository,
             final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher,
-            final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher,
+            final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher,
             final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher,
             final CommandDispatcher<PaymentCommandContext, Payment, UUID> paymentDispatcher,
             final TaskScheduler taskScheduler,
-            final InMemoryEventPublisher<UUID> bookingPublisher) {
-        final var result = new BookingSaga(repository,
-                performanceDispatcher, bookingDispatcher, customerDispatcher, paymentDispatcher, taskScheduler);
-        bookingPublisher.registerEventConsumer(result);
+            final InMemoryEventPublisher<UUID> ticketPublisher) {
+        final var result = new TicketSaga(repository,
+                performanceDispatcher, ticketDispatcher, customerDispatcher, paymentDispatcher, taskScheduler);
+        ticketPublisher.registerEventConsumer(result);
         return result;
     }
 
@@ -83,10 +83,10 @@ public class SagaConfiguration {
     public PaymentSaga paymentSaga(
             final Repository<ProcessState, UUID> repository,
             final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher,
-            final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher,
+            final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher,
             final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher,
             final InMemoryEventPublisher<UUID> paymentPublisher) {
-        final var result = new PaymentSaga(repository, performanceDispatcher, bookingDispatcher, customerDispatcher);
+        final var result = new PaymentSaga(repository, performanceDispatcher, ticketDispatcher, customerDispatcher);
         paymentPublisher.registerEventConsumer(result);
         return result;
     }

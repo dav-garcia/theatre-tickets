@@ -10,7 +10,7 @@ import java.util.UUID;
 public class SeatsSelectedEvent implements Event<UUID> {
 
     UUID aggregateRootId;
-    UUID forBooking;
+    UUID forTicket;
     Set<Seat> seats;
     String email;
 }

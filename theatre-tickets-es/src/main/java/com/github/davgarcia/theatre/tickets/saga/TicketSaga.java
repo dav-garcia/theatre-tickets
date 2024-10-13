@@ -11,14 +11,14 @@ import com.github.davgarcia.theatre.tickets.event.performance.Seat;
 import com.github.davgarcia.theatre.tickets.command.performance.ReleaseSeatsCommand;
 import com.github.davgarcia.theatre.tickets.command.performance.Performance;
 import com.github.davgarcia.theatre.tickets.command.performance.PerformanceCommandContext;
-import com.github.davgarcia.theatre.tickets.command.booking.AbandonBookingCommand;
-import com.github.davgarcia.theatre.tickets.command.booking.Booking;
-import com.github.davgarcia.theatre.tickets.command.booking.BookingCommandContext;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingAbandonedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingCancelledEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingConfirmedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingCreatedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingPaidEvent;
+import com.github.davgarcia.theatre.tickets.command.ticket.AbandonTicketCommand;
+import com.github.davgarcia.theatre.tickets.command.ticket.Ticket;
+import com.github.davgarcia.theatre.tickets.command.ticket.TicketCommandContext;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketAbandonedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketCancelledEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketConfirmedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketCreatedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketPaidEvent;
 import com.github.davgarcia.theatre.tickets.infra.Event;
 import com.github.davgarcia.theatre.tickets.infra.dispatch.CommandDispatcher;
 import com.github.davgarcia.theatre.tickets.infra.event.EventConsumer;
@@ -27,29 +27,29 @@ import com.github.davgarcia.theatre.tickets.infra.task.TaskScheduler;
 
 import java.util.UUID;
 
-public class BookingSaga implements EventConsumer<UUID> {
+public class TicketSaga implements EventConsumer<UUID> {
 
     private static final String TASK_TYPE = "timeout";
     private static final int DEFAULT_TIMEOUT = 10 * 60;
 
     private final Repository<ProcessState, UUID> repository;
     private final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher;
-    private final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher;
+    private final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher;
     private final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher;
     private final CommandDispatcher<PaymentCommandContext, Payment, UUID> paymentDispatcher;
     private final TaskScheduler taskScheduler;
 
     private int timeout;
 
-    public BookingSaga(final Repository<ProcessState, UUID> repository,
-                       final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher,
-                       final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher,
-                       final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher,
-                       final CommandDispatcher<PaymentCommandContext, Payment, UUID> paymentDispatcher,
-                       final TaskScheduler taskScheduler) {
+    public TicketSaga(final Repository<ProcessState, UUID> repository,
+                      final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher,
+                      final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher,
+                      final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher,
+                      final CommandDispatcher<PaymentCommandContext, Payment, UUID> paymentDispatcher,
+                      final TaskScheduler taskScheduler) {
         this.repository = repository;
         this.performanceDispatcher = performanceDispatcher;
-        this.bookingDispatcher = bookingDispatcher;
+        this.ticketDispatcher = ticketDispatcher;
         this.customerDispatcher = customerDispatcher;
         this.paymentDispatcher = paymentDispatcher;
         this.taskScheduler = taskScheduler;
@@ -63,35 +63,35 @@ public class BookingSaga implements EventConsumer<UUID> {
 
     @Override
     public void consume(final long version, final Event<UUID> event) {
-        if (event instanceof BookingCreatedEvent) {
-            process((BookingCreatedEvent) event);
-        } else if (event instanceof BookingConfirmedEvent) {
-            process((BookingConfirmedEvent) event);
-        } else if (event instanceof BookingAbandonedEvent) {
-            process((BookingAbandonedEvent) event);
-        } else if (event instanceof BookingCancelledEvent) {
-            process((BookingCancelledEvent) event);
-        } else if (event instanceof BookingPaidEvent) {
-            process((BookingPaidEvent) event);
+        if (event instanceof TicketCreatedEvent) {
+            process((TicketCreatedEvent) event);
+        } else if (event instanceof TicketConfirmedEvent) {
+            process((TicketConfirmedEvent) event);
+        } else if (event instanceof TicketAbandonedEvent) {
+            process((TicketAbandonedEvent) event);
+        } else if (event instanceof TicketCancelledEvent) {
+            process((TicketCancelledEvent) event);
+        } else if (event instanceof TicketPaidEvent) {
+            process((TicketPaidEvent) event);
         }
     }
 
-    private void process(final BookingCreatedEvent event) {
+    private void process(final TicketCreatedEvent event) {
         final var id = event.getAggregateRootId();
 
-        taskScheduler.scheduleTask(TASK_TYPE, id, () -> bookingDispatcher.dispatch(new AbandonBookingCommand(id)), timeout);
+        taskScheduler.scheduleTask(TASK_TYPE, id, () -> ticketDispatcher.dispatch(new AbandonTicketCommand(id)), timeout);
     }
 
-    private void process(final BookingConfirmedEvent event) {
+    private void process(final TicketConfirmedEvent event) {
         final var state = repository.load(event.getAggregateRootId()).orElseThrow();
         final var maxAmount = state.getSeats().stream()
                 .mapToInt(Seat::getPrice)
                 .sum();
 
-        customerDispatcher.dispatch(new ApplyDiscountsCommand(state.getCustomer(), state.getId(), maxAmount));
+        customerDispatcher.dispatch(new ApplyDiscountsCommand(state.getCustomer(), state.getTicket(), maxAmount));
     }
 
-    private void process(final BookingAbandonedEvent event) {
+    private void process(final TicketAbandonedEvent event) {
         final var state = repository.load(event.getAggregateRootId()).orElseThrow();
 
         if (!cancelPayment(state)) {
@@ -100,7 +100,7 @@ public class BookingSaga implements EventConsumer<UUID> {
         }
     }
 
-    private void process(final BookingCancelledEvent event) {
+    private void process(final TicketCancelledEvent event) {
         final var state = repository.load(event.getAggregateRootId()).orElseThrow();
 
         taskScheduler.cancelTask(TASK_TYPE, event.getAggregateRootId());
@@ -111,7 +111,7 @@ public class BookingSaga implements EventConsumer<UUID> {
         }
     }
 
-    private void process(final BookingPaidEvent event) {
+    private void process(final TicketPaidEvent event) {
         taskScheduler.cancelTask(TASK_TYPE, event.getAggregateRootId());
 
         repository.delete(event.getAggregateRootId());
@@ -127,7 +127,7 @@ public class BookingSaga implements EventConsumer<UUID> {
     }
 
     private void recoverDiscounts(final ProcessState state) {
-        customerDispatcher.dispatch(new RecoverDiscountsCommand(state.getCustomer(), state.getId()));
+        customerDispatcher.dispatch(new RecoverDiscountsCommand(state.getCustomer(), state.getTicket()));
     }
 
     private void releaseSeats(final ProcessState state) {

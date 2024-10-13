@@ -26,7 +26,7 @@ public class CustomerHistory implements Entity<String> {
 
     @Data
     @lombok.Builder(builderClassName = "Builder")
-    public static class Booking {
+    public static class Ticket {
 
         public enum Status {
             CREATED,
@@ -50,35 +50,35 @@ public class CustomerHistory implements Entity<String> {
     private final List<Discount> discounts;
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
-    private Map<UUID, Booking> bookings;
+    private Map<UUID, Ticket> tickets;
 
-    public void applyDiscounts(final UUID bookingId, final List<UUID> discountIds) {
-        final var booking = bookings.get(bookingId);
+    public void applyDiscounts(final UUID ticketId, final List<UUID> discountIds) {
+        final var ticket = tickets.get(ticketId);
         final var applied = discounts.stream()
                 .filter(d -> discountIds.contains(d.getId()))
                 .toList();
         discounts.removeAll(applied);
-        booking.discounts.addAll(applied);
+        ticket.discounts.addAll(applied);
     }
 
-    public void recoverDiscounts(final UUID bookingId, final List<UUID> discountIds) {
-        final var booking = bookings.get(bookingId);
-        final var recovered = booking.discounts.stream()
+    public void recoverDiscounts(final UUID ticketId, final List<UUID> discountIds) {
+        final var ticket = tickets.get(ticketId);
+        final var recovered = ticket.discounts.stream()
                 .filter(d -> discountIds.contains(d.getId()))
                 .toList();
-        booking.discounts.removeAll(recovered);
+        ticket.discounts.removeAll(recovered);
         discounts.addAll(recovered);
     }
 
-    public void addBooking(final Booking booking) {
-        bookings.put(booking.getId(), booking);
+    public void addTicket(final Ticket ticket) {
+        tickets.put(ticket.getId(), ticket);
     }
 
-    public Booking getBooking(final UUID bookingId) {
-        return bookings.get(bookingId);
+    public Ticket getTicket(final UUID ticketId) {
+        return tickets.get(ticketId);
     }
 
-    public boolean containsBooking(final UUID bookingId) {
-        return bookings.containsKey(bookingId);
+    public boolean containsTicket(final UUID ticketId) {
+        return tickets.containsKey(ticketId);
     }
 }

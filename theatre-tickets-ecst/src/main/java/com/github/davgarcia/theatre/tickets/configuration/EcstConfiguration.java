@@ -1,7 +1,7 @@
 package com.github.davgarcia.theatre.tickets.configuration;
 
 import com.github.davgarcia.theatre.tickets.Performance;
-import com.github.davgarcia.theatre.tickets.Booking;
+import com.github.davgarcia.theatre.tickets.Ticket;
 import com.github.davgarcia.theatre.tickets.command.PerformanceCommandService;
 import com.github.davgarcia.theatre.tickets.infra.event.EventPublisher;
 import com.github.davgarcia.theatre.tickets.infra.event.inmemory.InMemoryEventPublisher;
@@ -30,20 +30,20 @@ public class EcstConfiguration {
     }
 
     @Bean
-    public Repository<Booking, UUID> bookingRepository() {
+    public Repository<Ticket, UUID> ticketRepository() {
         return new InMemoryRepository<>();
     }
 
     @Bean
-    public InMemoryEventPublisher<UUID> bookingPublisher() {
+    public InMemoryEventPublisher<UUID> ticketPublisher() {
         return new InMemoryEventPublisher<>();
     }
 
     @Bean
     public PerformanceCommandService performanceCommandService(
             final Repository<Performance, UUID> performanceRepository,
-            final Repository<Booking, UUID> bookingRepository,
-            final EventPublisher<UUID> bookingPublisher) {
-        return new PerformanceCommandService(performanceRepository, bookingRepository, bookingPublisher);
+            final Repository<Ticket, UUID> ticketRepository,
+            final EventPublisher<UUID> ticketPublisher) {
+        return new PerformanceCommandService(performanceRepository, ticketRepository, ticketPublisher);
     }
 }

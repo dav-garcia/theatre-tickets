@@ -13,7 +13,7 @@ import java.util.UUID;
 public class SelectSeatsCommand implements Command<PerformanceCommandContext, Performance, UUID> {
 
     UUID aggregateRootId;
-    UUID forBooking;
+    UUID forTicket;
     Set<Seat> seats;
     String email;
 
@@ -24,6 +24,6 @@ public class SelectSeatsCommand implements Command<PerformanceCommandContext, Pe
                 .orElseThrow(() -> new PreconditionsViolatedException("Performance doesn't exists or the seats aren't available"));
 
         context.getEventPublisher().tryPublish(performance.getVersion(),
-                new SeatsSelectedEvent(aggregateRootId, forBooking, seats, email));
+                new SeatsSelectedEvent(aggregateRootId, forTicket, seats, email));
     }
 }

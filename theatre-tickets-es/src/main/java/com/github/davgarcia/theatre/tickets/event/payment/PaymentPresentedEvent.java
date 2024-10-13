@@ -10,7 +10,7 @@ import java.util.UUID;
 public class PaymentPresentedEvent implements Event<UUID> {
 
     UUID aggregateRootId;
-    UUID booking;
+    UUID ticket;
     String customer;
     List<Item> items;
     String paymentCode;

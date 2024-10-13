@@ -17,7 +17,7 @@ import java.util.UUID;
 public class PresentPaymentIdempotentCommand implements Command<PaymentCommandContext, Payment, UUID> {
 
     UUID aggregateRootId;
-    UUID booking;
+    UUID ticket;
     String customer;
     List<Item> items;
 
@@ -37,11 +37,11 @@ public class PresentPaymentIdempotentCommand implements Command<PaymentCommandCo
             paymentCode = startPayment(context.getPaymentGateway());
         }
         context.getEventPublisher().tryPublish(0L,
-                new PaymentPresentedEvent(aggregateRootId, booking, customer, items, paymentCode));
+                new PaymentPresentedEvent(aggregateRootId, ticket, customer, items, paymentCode));
     }
 
     private String startPayment(final PaymentGateway paymentGateway) {
-        final var description = "Booking id " + booking;
+        final var description = "Ticket id " + ticket;
         final var amount = items.stream()
                 .mapToInt(Item::getAmount)
                 .sum();

@@ -10,6 +10,6 @@ import java.util.UUID;
 public class DiscountsRecoveredEvent implements Event<String> {
 
     String aggregateRootId;
-    UUID fromBooking;
+    UUID fromTicket;
     List<UUID> discounts;
 }

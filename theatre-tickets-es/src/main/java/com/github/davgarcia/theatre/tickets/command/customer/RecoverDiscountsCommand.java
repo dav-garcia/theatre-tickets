@@ -11,16 +11,16 @@ import java.util.stream.Collectors;
 public class RecoverDiscountsCommand implements Command<CustomerCommandContext, Customer, String> {
 
     String aggregateRootId;
-    UUID fromBooking;
+    UUID fromTicket;
 
     @Override
     public void execute(final CustomerCommandContext context) {
         final var customer = context.getRepository().load(aggregateRootId).orElseThrow();
-        final var discounts = customer.getAppliedDiscounts(fromBooking).stream()
+        final var discounts = customer.getAppliedDiscounts(fromTicket).stream()
                 .map(Discount::getId)
                 .collect(Collectors.toList());
 
         context.getEventPublisher().tryPublish(customer.getVersion(),
-                new DiscountsRecoveredEvent(aggregateRootId, fromBooking, discounts));
+                new DiscountsRecoveredEvent(aggregateRootId, fromTicket, discounts));
     }
 }

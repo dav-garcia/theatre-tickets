@@ -55,7 +55,7 @@ public class CustomerSaga implements EventConsumer<String> {
     }
 
     private void process(final DiscountsAppliedEvent event) {
-        final var state = repository.load(event.getToBooking()).orElseThrow();
+        final var state = repository.load(event.getToTicket()).orElseThrow();
 
         final var items = new ArrayList<Item>();
 
@@ -63,19 +63,19 @@ public class CustomerSaga implements EventConsumer<String> {
             items.add(new Item("Seat " + seat.getRow() + seat.getNumber(), seat.getPrice()));
         }
         for (final Discount discount : discountRepository.find(d -> event.getDiscounts().contains(d.getId()))) {
-            discount.setAppliedToBooking(event.getToBooking());
+            discount.setAppliedToTicket(event.getToTicket());
             discountRepository.save(discount);
 
             items.add(new Item(discount.getDescription(), -discount.getAmount()));
         }
 
         paymentDispatcher.dispatch(new PresentPaymentIdempotentCommand(
-                UUID.randomUUID(), event.getToBooking(), event.getAggregateRootId(), items));
+                UUID.randomUUID(), event.getToTicket(), event.getAggregateRootId(), items));
     }
 
     private void process(final DiscountsRecoveredEvent event) {
         for (final Discount discount : discountRepository.find(d -> event.getDiscounts().contains(d.getId()))) {
-            discount.setAppliedToBooking(null);
+            discount.setAppliedToTicket(null);
             discountRepository.save(discount);
         }
     }

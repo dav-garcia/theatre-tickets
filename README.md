@@ -46,6 +46,6 @@ idempotent payment proposal and payment proposal with rollback.
    and command context (infrastructure objects needed by commands).
 2. `event`: each aggregate has its own subpackage containing the events published by it.
    This is the real event-based domain model.
-3. `query`: query model example. The use case is aggregating all booking transactions to build a customer history.
-4. `saga`: booking process saga to trigger secondary events.
+3. `query`: query model example. The use case is aggregating all ticket transactions to build a customer history.
+4. `saga`: process sagas to trigger secondary events and carry out compensation actions.
    It contains event consumers and its own persistent entity called `ProcessState`.

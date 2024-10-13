@@ -6,9 +6,9 @@ import com.github.davgarcia.theatre.tickets.command.customer.RecoverDiscountsCom
 import com.github.davgarcia.theatre.tickets.command.performance.ReleaseSeatsCommand;
 import com.github.davgarcia.theatre.tickets.command.performance.Performance;
 import com.github.davgarcia.theatre.tickets.command.performance.PerformanceCommandContext;
-import com.github.davgarcia.theatre.tickets.command.booking.PayBookingCommand;
-import com.github.davgarcia.theatre.tickets.command.booking.Booking;
-import com.github.davgarcia.theatre.tickets.command.booking.BookingCommandContext;
+import com.github.davgarcia.theatre.tickets.command.ticket.PayTicketCommand;
+import com.github.davgarcia.theatre.tickets.command.ticket.Ticket;
+import com.github.davgarcia.theatre.tickets.command.ticket.TicketCommandContext;
 import com.github.davgarcia.theatre.tickets.event.payment.PaymentCancelledEvent;
 import com.github.davgarcia.theatre.tickets.event.payment.PaymentConfirmedEvent;
 import com.github.davgarcia.theatre.tickets.event.payment.PaymentPresentedEvent;
@@ -24,16 +24,16 @@ public class PaymentSaga implements EventConsumer<UUID> {
 
     private final Repository<ProcessState, UUID> repository;
     private final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher;
-    private final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher;
+    private final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher;
     private final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher;
 
     public PaymentSaga(final Repository<ProcessState, UUID> repository,
                        final CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher,
-                       final CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher,
+                       final CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher,
                        final CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher) {
         this.repository = repository;
         this.performanceDispatcher = performanceDispatcher;
-        this.bookingDispatcher = bookingDispatcher;
+        this.ticketDispatcher = ticketDispatcher;
         this.customerDispatcher = customerDispatcher;
     }
 
@@ -49,7 +49,7 @@ public class PaymentSaga implements EventConsumer<UUID> {
     }
 
     private void process(final PaymentPresentedEvent event) {
-        final var state = repository.load(event.getBooking()).orElseThrow();
+        final var state = repository.load(event.getTicket()).orElseThrow();
         state.setPayment(event.getAggregateRootId());
         repository.save(state);
     }
@@ -58,7 +58,7 @@ public class PaymentSaga implements EventConsumer<UUID> {
         final var state = repository.find(e -> Objects.equals(e.getPayment(), event.getAggregateRootId()))
                 .getFirst();
 
-        bookingDispatcher.dispatch(new PayBookingCommand(state.getId()));
+        ticketDispatcher.dispatch(new PayTicketCommand(state.getTicket()));
     }
 
     private void process(final PaymentCancelledEvent event) {
@@ -71,11 +71,11 @@ public class PaymentSaga implements EventConsumer<UUID> {
         releaseSeats(state);
     }
 
-    private void recoverDiscounts(final ProcessState estado) {
-        customerDispatcher.dispatch(new RecoverDiscountsCommand(estado.getCustomer(), estado.getId()));
+    private void recoverDiscounts(final ProcessState state) {
+        customerDispatcher.dispatch(new RecoverDiscountsCommand(state.getCustomer(), state.getTicket()));
     }
 
-    private void releaseSeats(final ProcessState estado) {
-        performanceDispatcher.dispatch(new ReleaseSeatsCommand(estado.getPerformance(), estado.getSeats()));
+    private void releaseSeats(final ProcessState state) {
+        performanceDispatcher.dispatch(new ReleaseSeatsCommand(state.getPerformance(), state.getSeats()));
     }
 }

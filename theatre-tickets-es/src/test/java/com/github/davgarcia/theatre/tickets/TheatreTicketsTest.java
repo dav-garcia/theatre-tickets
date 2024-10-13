@@ -10,10 +10,10 @@ import com.github.davgarcia.theatre.tickets.command.performance.CreatePerformanc
 import com.github.davgarcia.theatre.tickets.command.performance.Performance;
 import com.github.davgarcia.theatre.tickets.command.performance.PerformanceCommandContext;
 import com.github.davgarcia.theatre.tickets.command.performance.SelectSeatsCommand;
-import com.github.davgarcia.theatre.tickets.command.booking.CancelBookingCommand;
-import com.github.davgarcia.theatre.tickets.command.booking.ConfirmBookingCommand;
-import com.github.davgarcia.theatre.tickets.command.booking.Booking;
-import com.github.davgarcia.theatre.tickets.command.booking.BookingCommandContext;
+import com.github.davgarcia.theatre.tickets.command.ticket.CancelTicketCommand;
+import com.github.davgarcia.theatre.tickets.command.ticket.ConfirmTicketCommand;
+import com.github.davgarcia.theatre.tickets.command.ticket.Ticket;
+import com.github.davgarcia.theatre.tickets.command.ticket.TicketCommandContext;
 import com.github.davgarcia.theatre.tickets.configuration.*;
 import com.github.davgarcia.theatre.tickets.event.payment.Item;
 import com.github.davgarcia.theatre.tickets.event.performance.Seat;
@@ -21,7 +21,7 @@ import com.github.davgarcia.theatre.tickets.event.performance.Auditorium;
 import com.github.davgarcia.theatre.tickets.infra.dispatch.CommandDispatcher;
 import com.github.davgarcia.theatre.tickets.infra.repository.Repository;
 import com.github.davgarcia.theatre.tickets.query.CustomerHistory;
-import com.github.davgarcia.theatre.tickets.saga.BookingSaga;
+import com.github.davgarcia.theatre.tickets.saga.TicketSaga;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +42,7 @@ import static org.awaitility.Awaitility.await;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(
         classes = {
-                PerformanceConfiguration.class, BookingConfiguration.class, CustomerConfiguration.class, PaymentConfiguration.class,
+                PerformanceConfiguration.class, TicketConfiguration.class, CustomerConfiguration.class, PaymentConfiguration.class,
                 SagaConfiguration.class, CustomerHistoryConfiguration.class},
         webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class TheatreTicketsTest {
@@ -59,7 +59,7 @@ class TheatreTicketsTest {
     private CommandDispatcher<PerformanceCommandContext, Performance, UUID> performanceDispatcher;
 
     @Autowired
-    private CommandDispatcher<BookingCommandContext, Booking, UUID> bookingDispatcher;
+    private CommandDispatcher<TicketCommandContext, Ticket, UUID> ticketDispatcher;
 
     @Autowired
     private CommandDispatcher<CustomerCommandContext, Customer, String> customerDispatcher;
@@ -68,7 +68,7 @@ class TheatreTicketsTest {
     private CommandDispatcher<PaymentCommandContext, Payment, UUID> paymentDispatcher;
 
     @Autowired
-    private BookingSaga bookingSaga; // To simulate booking abandoned timeout
+    private TicketSaga ticketSaga; // To simulate ticket abandoned timeout
 
     @Autowired
     private Repository<Performance, UUID> performanceRepository; // To check seat availability
@@ -77,142 +77,142 @@ class TheatreTicketsTest {
     private Repository<CustomerHistory, String> customerHistoryRepository; // To assert actual vs expected results
 
     @Test
-    void whenSeatsSelected_thenBookingCreated() {
+    void whenSeatsSelected_thenTicketCreated() {
         final var performanceId = UUID.randomUUID();
-        final var bookingId = UUID.randomUUID();
+        final var ticketId = UUID.randomUUID();
         final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
         performanceDispatcher.dispatch(new CreatePerformanceCommand(performanceId, ZonedDateTime.now(), AUDITORIUM));
-        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, bookingId, Set.of(A1, A2, B3), customerId));
+        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, ticketId, Set.of(A1, A2, B3), customerId));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> customerHistoryRepository.load(customerId)
-                .filter(r -> r.containsBooking(bookingId))
+                .filter(r -> r.containsTicket(ticketId))
                 .isPresent());
 
         final var performance = performanceRepository.load(performanceId).orElseThrow();
         final var history = customerHistoryRepository.load(customerId).orElseThrow();
-        final var booking = history.getBooking(bookingId);
+        final var ticket = history.getTicket(ticketId);
 
         assertThat(performance.getAvailableSeats()).containsExactlyInAnyOrder(A3, B1, B2);
         assertThat(history.isSubscribed()).isFalse();
         assertThat(history.getName()).isNull();
         assertThat(history.getDiscounts()).isEmpty();
-        assertThat(booking.getSeats()).containsExactlyInAnyOrder(A1, A2, B3);
-        assertThat(booking.getStatus()).isEqualTo(CustomerHistory.Booking.Status.CREATED);
+        assertThat(ticket.getSeats()).containsExactlyInAnyOrder(A1, A2, B3);
+        assertThat(ticket.getStatus()).isEqualTo(CustomerHistory.Ticket.Status.CREATED);
     }
 
     @Test
-    void whenBookingAbandoned_thenButacasLiberadas() {
-        bookingSaga.setTimeout(1);
+    void whenTicketAbandoned_thenButacasLiberadas() {
+        ticketSaga.setTimeout(1);
         try {
             final var performanceId = UUID.randomUUID();
-            final var bookingId = UUID.randomUUID();
+            final var ticketId = UUID.randomUUID();
             final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
             performanceDispatcher.dispatch(new CreatePerformanceCommand(performanceId, ZonedDateTime.now(), AUDITORIUM));
-            performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, bookingId, Set.of(A1, A2, B3), customerId));
+            performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, ticketId, Set.of(A1, A2, B3), customerId));
 
             await().atMost(2, TimeUnit.SECONDS).until(() -> performanceRepository.load(performanceId)
                     .filter(r -> r.getAvailableSeats().containsAll(Set.of(A1, A2, B3)))
                     .isPresent());
 
             final var history = customerHistoryRepository.load(customerId).orElseThrow();
-            final var booking = history.getBooking(bookingId);
+            final var ticket = history.getTicket(ticketId);
 
-            assertThat(booking.getStatus()).isEqualTo(CustomerHistory.Booking.Status.ABANDONED);
+            assertThat(ticket.getStatus()).isEqualTo(CustomerHistory.Ticket.Status.ABANDONED);
         } finally {
-            bookingSaga.setTimeout(null);
+            ticketSaga.setTimeout(null);
         }
     }
 
     @Test
-    void givenDiscount_whenBookingConfirmed_thenDiscountedPaymentPresented() {
+    void givenDiscount_whenTicketConfirmed_thenDiscountedPaymentPresented() {
         final var performanceId = UUID.randomUUID();
-        final var bookingId = UUID.randomUUID();
+        final var ticketId = UUID.randomUUID();
         final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
         performanceDispatcher.dispatch(new CreatePerformanceCommand(performanceId, ZonedDateTime.now(), AUDITORIUM));
-        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, bookingId, Set.of(A1, A2, B3), customerId));
+        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, ticketId, Set.of(A1, A2, B3), customerId));
         customerDispatcher.dispatch(new SubscribeCustomerCommand(customerId, "The customer"));
-        bookingDispatcher.dispatch(new ConfirmBookingCommand(bookingId));
+        ticketDispatcher.dispatch(new ConfirmTicketCommand(ticketId));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> customerHistoryRepository.load(customerId)
-                .filter(h -> h.getBooking(bookingId).getPayment() != null)
+                .filter(h -> h.getTicket(ticketId).getPayment() != null)
                 .isPresent());
 
         final var history = customerHistoryRepository.load(customerId).orElseThrow();
-        final var booking = history.getBooking(bookingId);
+        final var ticket = history.getTicket(ticketId);
 
         assertThat(history.isSubscribed()).isTrue();
         assertThat(history.getName()).isEqualTo("The customer");
         assertThat(history.getDiscounts()).isEmpty();
-        assertThat(booking.getDiscounts())
+        assertThat(ticket.getDiscounts())
                 .extracting(CustomerHistory.Discount::getAmount,
                         CustomerHistory.Discount::getValidFrom,
                         CustomerHistory.Discount::getValidUntil)
                 .containsExactly(tuple(10, LocalDate.now(), LocalDate.now().plusDays(30)));
-        assertThat(booking.getItems()).containsExactlyInAnyOrder(
+        assertThat(ticket.getItems()).containsExactlyInAnyOrder(
                 new Item("Seat A1", 10),
                 new Item("Seat A2", 20),
                 new Item("Seat B3", 30),
                 new Item("Loyalty discount", -10));
-        assertThat(booking.getStatus()).isEqualTo(CustomerHistory.Booking.Status.CONFIRMED);
+        assertThat(ticket.getStatus()).isEqualTo(CustomerHistory.Ticket.Status.CONFIRMED);
     }
 
     @Test
-    void whenPaymentConfirmed_thenBookingPaid() {
+    void whenPaymentConfirmed_thenTicketPaid() {
         final var performanceId = UUID.randomUUID();
-        final var bookingId = UUID.randomUUID();
+        final var ticketId = UUID.randomUUID();
         final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
         performanceDispatcher.dispatch(new CreatePerformanceCommand(performanceId, ZonedDateTime.now(), AUDITORIUM));
-        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, bookingId, Set.of(A1, A2, B3), customerId));
-        bookingDispatcher.dispatch(new ConfirmBookingCommand(bookingId));
+        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, ticketId, Set.of(A1, A2, B3), customerId));
+        ticketDispatcher.dispatch(new ConfirmTicketCommand(ticketId));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> customerHistoryRepository.load(customerId)
-                .filter(h -> h.getBooking(bookingId).getPayment() != null)
+                .filter(h -> h.getTicket(ticketId).getPayment() != null)
                 .isPresent());
 
         final var history = customerHistoryRepository.load(customerId).orElseThrow();
-        final var booking = history.getBooking(bookingId);
+        final var ticket = history.getTicket(ticketId);
 
-        paymentDispatcher.dispatch(new ConfirmPaymentCommand(booking.getPayment()));
+        paymentDispatcher.dispatch(new ConfirmPaymentCommand(ticket.getPayment()));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> customerHistoryRepository.load(customerId)
-                .filter(h -> h.getBooking(bookingId).getStatus() == CustomerHistory.Booking.Status.PAID)
+                .filter(h -> h.getTicket(ticketId).getStatus() == CustomerHistory.Ticket.Status.PAID)
                 .isPresent());
     }
 
     @Test
-    void givenDiscount_whenBookingCancelled_thenSeatsReleasedAndDiscountRecovered() {
+    void givenDiscount_whenTicketCancelled_thenSeatsReleasedAndDiscountRecovered() {
         final var performanceId = UUID.randomUUID();
-        final var bookingId = UUID.randomUUID();
+        final var ticketId = UUID.randomUUID();
         final var customerId = RandomStringUtils.randomAlphabetic(10) + "@email.com";
 
         performanceDispatcher.dispatch(new CreatePerformanceCommand(performanceId, ZonedDateTime.now(), AUDITORIUM));
-        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, bookingId, Set.of(A1, A2, B3), customerId));
+        performanceDispatcher.dispatch(new SelectSeatsCommand(performanceId, ticketId, Set.of(A1, A2, B3), customerId));
         customerDispatcher.dispatch(new SubscribeCustomerCommand(customerId, "The customer"));
-        bookingDispatcher.dispatch(new ConfirmBookingCommand(bookingId));
+        ticketDispatcher.dispatch(new ConfirmTicketCommand(ticketId));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> customerHistoryRepository.load(customerId)
-                .filter(h -> h.getBooking(bookingId).getPayment() != null)
+                .filter(h -> h.getTicket(ticketId).getPayment() != null)
                 .isPresent());
 
-        bookingDispatcher.dispatch(new CancelBookingCommand(bookingId));
+        ticketDispatcher.dispatch(new CancelTicketCommand(ticketId));
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> performanceRepository.load(performanceId)
                 .filter(r -> r.getAvailableSeats().containsAll(Set.of(A1, A2, B3)))
                 .isPresent());
 
         final var history = customerHistoryRepository.load(customerId).orElseThrow();
-        final var booking = history.getBooking(bookingId);
+        final var ticket = history.getTicket(ticketId);
 
         assertThat(history.getDiscounts())
                 .extracting(CustomerHistory.Discount::getAmount,
                         CustomerHistory.Discount::getValidFrom,
                         CustomerHistory.Discount::getValidUntil)
                 .containsExactly(tuple(10, LocalDate.now(), LocalDate.now().plusDays(30)));
-        assertThat(booking.getDiscounts()).isEmpty();
-        assertThat(booking.getStatus()).isEqualTo(CustomerHistory.Booking.Status.CANCELLED);
+        assertThat(ticket.getDiscounts()).isEmpty();
+        assertThat(ticket.getStatus()).isEqualTo(CustomerHistory.Ticket.Status.CANCELLED);
     }
 }

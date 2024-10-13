@@ -5,11 +5,11 @@ import com.github.davgarcia.theatre.tickets.event.customer.DiscountGrantedEvent;
 import com.github.davgarcia.theatre.tickets.event.customer.DiscountsAppliedEvent;
 import com.github.davgarcia.theatre.tickets.event.customer.DiscountsRecoveredEvent;
 import com.github.davgarcia.theatre.tickets.event.payment.PaymentPresentedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingAbandonedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingCancelledEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingConfirmedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingCreatedEvent;
-import com.github.davgarcia.theatre.tickets.event.booking.BookingPaidEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketAbandonedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketCancelledEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketConfirmedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketCreatedEvent;
+import com.github.davgarcia.theatre.tickets.event.ticket.TicketPaidEvent;
 import com.github.davgarcia.theatre.tickets.infra.Event;
 import com.github.davgarcia.theatre.tickets.infra.event.EventConsumer;
 import com.github.davgarcia.theatre.tickets.infra.repository.Repository;
@@ -32,15 +32,15 @@ public class CustomerHistoryEventConsumer implements EventConsumer<Object> {
 
     private Map<Class<?>, Consumer<Event<?>>> buildConsumers() {
         return Map.of(
-                BookingCreatedEvent.class, e -> apply((BookingCreatedEvent) e),
-                BookingConfirmedEvent.class, e ->
-                        applyStatus(((BookingConfirmedEvent) e).getAggregateRootId(), CustomerHistory.Booking.Status.CONFIRMED),
-                BookingAbandonedEvent.class, e ->
-                        applyStatus(((BookingAbandonedEvent) e).getAggregateRootId(), CustomerHistory.Booking.Status.ABANDONED),
-                BookingCancelledEvent.class, e ->
-                        applyStatus(((BookingCancelledEvent) e).getAggregateRootId(), CustomerHistory.Booking.Status.CANCELLED),
-                BookingPaidEvent.class, e ->
-                        applyStatus(((BookingPaidEvent) e).getAggregateRootId(), CustomerHistory.Booking.Status.PAID),
+                TicketCreatedEvent.class, e -> apply((TicketCreatedEvent) e),
+                TicketConfirmedEvent.class, e ->
+                        applyStatus(((TicketConfirmedEvent) e).getAggregateRootId(), CustomerHistory.Ticket.Status.CONFIRMED),
+                TicketAbandonedEvent.class, e ->
+                        applyStatus(((TicketAbandonedEvent) e).getAggregateRootId(), CustomerHistory.Ticket.Status.ABANDONED),
+                TicketCancelledEvent.class, e ->
+                        applyStatus(((TicketCancelledEvent) e).getAggregateRootId(), CustomerHistory.Ticket.Status.CANCELLED),
+                TicketPaidEvent.class, e ->
+                        applyStatus(((TicketPaidEvent) e).getAggregateRootId(), CustomerHistory.Ticket.Status.PAID),
                 // EmailRegisteredEvent is not needed
                 CustomerSubscribedEvent.class, e -> apply((CustomerSubscribedEvent) e),
                 DiscountGrantedEvent.class, e -> apply((DiscountGrantedEvent) e),
@@ -51,26 +51,26 @@ public class CustomerHistoryEventConsumer implements EventConsumer<Object> {
         );
     }
 
-    private void apply(final BookingCreatedEvent event) {
+    private void apply(final TicketCreatedEvent event) {
         final var history = customerHistoryRepository.load(event.getCustomer())
                 .orElseGet(() -> CustomerHistory.builder()
                         .id(event.getCustomer())
                         .discounts(new ArrayList<>(2))
-                        .bookings(new HashMap<>(2))
+                        .tickets(new HashMap<>(2))
                         .build());
-        history.addBooking(CustomerHistory.Booking.builder()
+        history.addTicket(CustomerHistory.Ticket.builder()
                 .id(event.getAggregateRootId())
                 .seats(event.getSeats())
                 .discounts(new ArrayList<>(2))
                 .items(new ArrayList<>(4))
-                .status(CustomerHistory.Booking.Status.CREATED)
+                .status(CustomerHistory.Ticket.Status.CREATED)
                 .build());
         customerHistoryRepository.save(history);
     }
 
-    private void applyStatus(final UUID bookindId, final CustomerHistory.Booking.Status status) {
-        final var history = customerHistoryRepository.find(h -> h.containsBooking(bookindId)).getFirst();
-        history.getBooking(bookindId).setStatus(status);
+    private void applyStatus(final UUID bookindId, final CustomerHistory.Ticket.Status status) {
+        final var history = customerHistoryRepository.find(h -> h.containsTicket(bookindId)).getFirst();
+        history.getTicket(bookindId).setStatus(status);
         customerHistoryRepository.save(history);
     }
 
@@ -79,7 +79,7 @@ public class CustomerHistoryEventConsumer implements EventConsumer<Object> {
                 .orElseGet(() -> CustomerHistory.builder()
                         .id(event.getAggregateRootId())
                         .discounts(new ArrayList<>(2))
-                        .bookings(new HashMap<>(2))
+                        .tickets(new HashMap<>(2))
                         .build());
         history.setName(event.getName());
         history.setSubscribed(true);
@@ -96,21 +96,21 @@ public class CustomerHistoryEventConsumer implements EventConsumer<Object> {
 
     private void apply(final DiscountsAppliedEvent event) {
         final var history = customerHistoryRepository.load(event.getAggregateRootId()).orElseThrow();
-        history.applyDiscounts(event.getToBooking(), event.getDiscounts());
+        history.applyDiscounts(event.getToTicket(), event.getDiscounts());
         customerHistoryRepository.save(history);
     }
 
     private void apply(final DiscountsRecoveredEvent event) {
         final var history = customerHistoryRepository.load(event.getAggregateRootId()).orElseThrow();
-        history.recoverDiscounts(event.getFromBooking(), event.getDiscounts());
+        history.recoverDiscounts(event.getFromTicket(), event.getDiscounts());
         customerHistoryRepository.save(history);
     }
 
     private void apply(final PaymentPresentedEvent event) {
         final var history = customerHistoryRepository.load(event.getCustomer()).orElseThrow();
-        final var booking = history.getBooking(event.getBooking());
-        booking.setPayment(event.getAggregateRootId());
-        booking.getItems().addAll(event.getItems());
+        final var ticket = history.getTicket(event.getTicket());
+        ticket.setPayment(event.getAggregateRootId());
+        ticket.getItems().addAll(event.getItems());
         customerHistoryRepository.save(history);
     }
 

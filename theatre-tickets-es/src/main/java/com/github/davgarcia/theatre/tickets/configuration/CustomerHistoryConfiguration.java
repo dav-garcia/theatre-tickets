@@ -22,12 +22,12 @@ public class CustomerHistoryConfiguration {
     @Bean
     public CustomerHistoryEventConsumer customerHistoryEventConsumer(final Repository<CustomerHistory, String> customerHistoryRepository,
                                                                      final InMemoryEventPublisher<UUID> performancePublisher,
-                                                                     final InMemoryEventPublisher<UUID> bookingPublisher,
+                                                                     final InMemoryEventPublisher<UUID> ticketPublisher,
                                                                      final InMemoryEventPublisher<String> customerPublisher,
                                                                      final InMemoryEventPublisher<UUID> paymentPublisher) {
         final var result = new CustomerHistoryEventConsumer(customerHistoryRepository);
         performancePublisher.registerEventConsumer((EventConsumer) result);
-        bookingPublisher.registerEventConsumer((EventConsumer) result);
+        ticketPublisher.registerEventConsumer((EventConsumer) result);
         customerPublisher.registerEventConsumer((EventConsumer) result);
         paymentPublisher.registerEventConsumer((EventConsumer) result);
         return result;

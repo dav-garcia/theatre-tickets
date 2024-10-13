@@ -81,7 +81,7 @@ public class CustomerEventConsumer implements EventConsumer<String> {
         customer.setVersion(version);
         customer.getDiscounts().stream()
                 .filter(d -> event.getDiscounts().contains(d.getId()))
-                .forEach(d -> d.setAppliedToBooking(event.getToBooking()));
+                .forEach(d -> d.setAppliedToTicket(event.getToTicket()));
 
         repository.save(customer);
     }
@@ -92,7 +92,7 @@ public class CustomerEventConsumer implements EventConsumer<String> {
         customer.setVersion(version);
         customer.getDiscounts().stream()
                 .filter(d -> event.getDiscounts().contains(d.getId()))
-                .forEach(d -> d.setAppliedToBooking(null));
+                .forEach(d -> d.setAppliedToTicket(null));
 
         repository.save(customer);
     }

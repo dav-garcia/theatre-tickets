@@ -14,7 +14,7 @@ import java.util.UUID;
 public class PresentPaymentRollbackCommand implements Command<PaymentCommandContext, Payment, UUID> {
 
     UUID aggregateRootId;
-    UUID booking;
+    UUID ticket;
     String customer;
     List<Item> items;
 
@@ -27,14 +27,14 @@ public class PresentPaymentRollbackCommand implements Command<PaymentCommandCont
         final var paymentCode = startPayment(context.getPaymentGateway());
         try {
             context.getEventPublisher().tryPublish(0L,
-                    new PaymentPresentedEvent(aggregateRootId, booking, customer, items, paymentCode));
+                    new PaymentPresentedEvent(aggregateRootId, ticket, customer, items, paymentCode));
         } catch (Exception exception) { // Rollback if new state cannot be saved
             cancelPayment(context.getPaymentGateway(), paymentCode);
         }
     }
 
     private String startPayment(final PaymentGateway paymentGateway) {
-        final var description = "Booking id " + booking;
+        final var description = "Ticket id " + ticket;
         final var amount = items.stream()
                 .mapToInt(Item::getAmount)
                 .sum();

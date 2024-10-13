@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Data
 @Builder(builderClassName = "Builder")
-public class Booking implements AggregateRoot<UUID> {
+public class Ticket implements AggregateRoot<UUID> {
 
     private final UUID id;
     private long version;

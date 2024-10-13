@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class ApplyDiscountsCommand implements Command<CustomerCommandContext, Customer, String> {
 
     String aggregateRootId;
-    UUID toBooking;
+    UUID toTicket;
     int maxAmount;
 
     @Override
@@ -23,6 +23,6 @@ public class ApplyDiscountsCommand implements Command<CustomerCommandContext, Cu
                 .collect(Collectors.toList());
 
         context.getEventPublisher().tryPublish(customer.getVersion(),
-                new DiscountsAppliedEvent(aggregateRootId, toBooking, discounts));
+                new DiscountsAppliedEvent(aggregateRootId, toTicket, discounts));
     }
 }
