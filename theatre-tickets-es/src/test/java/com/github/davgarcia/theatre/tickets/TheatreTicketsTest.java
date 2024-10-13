@@ -102,7 +102,7 @@ class TheatreTicketsTest {
     }
 
     @Test
-    void whenTicketAbandoned_thenButacasLiberadas() {
+    void whenTicketAbandoned_thenSeatsReleased() {
         ticketSaga.setTimeout(1);
         try {
             final var performanceId = UUID.randomUUID();
